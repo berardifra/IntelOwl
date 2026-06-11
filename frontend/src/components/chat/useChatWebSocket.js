@@ -88,10 +88,14 @@ export function useChatWebSocket() {
           // post-ack watchdog until the agent proves it is alive by emitting `start`.
           store.applyAck(event);
           if (postAckTimer.current) clearTimeout(postAckTimer.current);
-          postAckTimer.current = setTimeout(() => {
-            postAckTimer.current = null;
-            useChatStore.getState().applyError(WORKER_UNAVAILABLE_TEXT);
-          }, POST_ACK_TIMEOUT_MS);
+          {
+            const epoch = store.navEpoch;
+            postAckTimer.current = setTimeout(() => {
+              postAckTimer.current = null;
+              if (useChatStore.getState().navEpoch !== epoch) return;
+              useChatStore.getState().applyError(WORKER_UNAVAILABLE_TEXT);
+            }, POST_ACK_TIMEOUT_MS);
+          }
           break;
         case ChatEventType.START:
           // Strict demux: `start`/`status`/`token`/`end` fan out to every tab of this user, so a
@@ -103,10 +107,14 @@ export function useChatWebSocket() {
             clearTimeout(postAckTimer.current);
             postAckTimer.current = null;
           }
-          maxTurnTimer.current = setTimeout(() => {
-            maxTurnTimer.current = null;
-            useChatStore.getState().applyError(TURN_TIMEOUT_TEXT);
-          }, MAX_TURN_TIMEOUT_MS);
+          {
+            const epoch = store.navEpoch;
+            maxTurnTimer.current = setTimeout(() => {
+              maxTurnTimer.current = null;
+              if (useChatStore.getState().navEpoch !== epoch) return;
+              useChatStore.getState().applyError(TURN_TIMEOUT_TEXT);
+            }, MAX_TURN_TIMEOUT_MS);
+          }
           store.applyStart();
           break;
         case ChatEventType.STATUS:
